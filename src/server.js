@@ -1,0 +1,38 @@
+import express from 'express';
+import morgan from 'morgan';
+import config from './config.js';
+import webhookRoutes from './routes/webhook.js';
+import logger from './utils/logger.js';
+
+const app = express();
+
+// Use raw body for webhooks, JSON parsing for other routes
+app.use('/webhook', webhookRoutes);
+
+// JSON middleware for other routes
+app.use(express.json({ limit: '1mb' }));
+
+app.use(
+  morgan('combined', {
+    stream: {
+      write: (message) => logger.info(message.trim()),
+    },
+  }),
+);
+
+app.get('/health', (req, res) =>
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() }),
+);
+
+app.use((err, req, res, next) => {
+  logger.error('Unhandled application error', { error: err.message, stack: err.stack });
+  return res.status(500).json({ message: 'Internal server error' });
+});
+
+const { port } = config;
+
+app.listen(port, () => {
+  logger.info(`Webhook service listening on port ${port}`);
+});
+
+export default app;
