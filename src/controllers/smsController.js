@@ -2,9 +2,7 @@ import templates from '../messages/templates.json' with { type: 'json' };
 import logger from '../utils/logger.js';
 import { getSentTagLog, persistSentTagLog } from '../services/shopifyService.js';
 import { sendSms } from '../services/twilioService.js';
-
-const normalizePhone = (phone) =>
-  (phone && String(phone).replace(/\s+/g, '')) || '';
+import { normalizeToE164 } from '../utils/phone.js';
 
 const extractOrderData = (shopifyOrder) => {
   const orderId = shopifyOrder.id;
@@ -67,6 +65,21 @@ export const handleOrderWebhook = async (req, res) => {
   
   try {
     const { orderId, orderNumber, customerPhone, customerName, orderTags } = extractOrderData(shopifyOrder);
+    let normalizedPhone;
+    
+    try {
+      normalizedPhone = normalizeToE164(customerPhone);
+    } catch (phoneError) {
+      logger.warn('Invalid customer phone number for SMS', {
+        orderId,
+        rawPhone: customerPhone,
+        error: phoneError.message,
+      });
+      return res.status(400).json({ 
+        message: 'Invalid customer phone number',
+        error: phoneError.message,
+      });
+    }
     
     // Process each tag that has a template
     const processedTags = [];
@@ -101,7 +114,7 @@ export const handleOrderWebhook = async (req, res) => {
       });
       
       await sendSms({
-        to: normalizePhone(customerPhone),
+        to: normalizedPhone,
         body: smsBody,
       });
       

@@ -8,6 +8,7 @@ Production-ready Express webhook that listens to Shopify Flow tag events, sends 
 - 🛑 Duplicate prevention via Shopify metafield `sms.sent_log`.
 - 📲 Twilio SMS integration with robust logging and error handling.
 - 🧾 Detailed request validation and structured logs for observability.
+- 🚦 Manual GET `/test/sms` endpoint to trigger Twilio templates for debugging.
 
 ## Prerequisites
 - Node.js 18+ and npm.
@@ -40,6 +41,16 @@ TWILIO_FROM=+15551234567
 - `npm start` – run in production mode.
 
 Health probe: GET `http://localhost:4000/health`
+
+### Manual Twilio Test Endpoint
+1. Start the server with `npm run dev` (local) or `npm start` (prod).
+2. Hit the endpoint in your browser or curl:
+   ```
+   http://localhost:4000/test/sms?phone=+15555551234&template=processing&name=Jane&order_number=1234&tracking=https://example.com/tracking
+   ```
+   - Required query params: `phone`, `template` (template key from `src/messages/templates.json`).
+   - Optional: `name`, `order_number` (or `order`), `tracking`.
+3. Response includes the rendered message (`preview`) and Twilio SID; logs stream to the terminal.
 
 ## Message Templates
 Edit `src/messages/templates.json` to tweak copy or add new tags:

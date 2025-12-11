@@ -1,6 +1,7 @@
 import twilio from 'twilio';
 import config from '../config.js';
 import logger from '../utils/logger.js';
+import { normalizeToE164 } from '../utils/phone.js';
 
 const { accountSid, authToken, fromNumber } = config.twilio;
 let twilioClient;
@@ -20,18 +21,21 @@ export const sendSms = async ({ to, body }) => {
     throw new Error('TWILIO_FROM number is not configured.');
   }
 
+  const normalizedTo = normalizeToE164(to);
+  const normalizedFrom = normalizeToE164(fromNumber);
+
   try {
     const message = await twilioClient.messages.create({
       body,
-      to,
-      from: fromNumber,
+      to: normalizedTo,
+      from: normalizedFrom,
     });
 
-    logger.info('SMS dispatched via Twilio', { sid: message.sid, to });
+    logger.info('SMS dispatched via Twilio', { sid: message.sid, to: normalizedTo });
     return message;
   } catch (error) {
     logger.error('Failed to send SMS via Twilio', {
-      to,
+      to: normalizedTo,
       error: error.message,
     });
     throw error;

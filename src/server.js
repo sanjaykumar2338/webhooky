@@ -1,6 +1,7 @@
 import express from 'express';
 import morgan from 'morgan';
 import config from './config.js';
+import testRoutes from './routes/test.js';
 import webhookRoutes from './routes/webhook.js';
 import logger from './utils/logger.js';
 
@@ -19,6 +20,8 @@ app.use(
     },
   }),
 );
+
+app.use('/test', testRoutes);
 
 app.get('/health', (req, res) =>
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() }),
