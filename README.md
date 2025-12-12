@@ -4,11 +4,12 @@ Production-ready Express webhook that listens to Shopify Flow tag events, sends 
 
 ## Features
 - ✅ POST `/webhook/sms` endpoint built with Express and modern ES modules.
-- 📬 Message templates loaded from `src/messages/templates.json` with `{{variable}}` placeholders.
+- 📬 Message templates stored in a local JSON file (configurable path; fallback to `src/messages/templates.json`) with `{{variable}}` placeholders.
 - 🛑 Duplicate prevention via Shopify metafield `sms.sent_log`.
 - 📲 Twilio SMS integration with robust logging and error handling.
 - 🧾 Detailed request validation and structured logs for observability.
 - 🚦 Manual GET `/test/sms` endpoint to trigger Twilio templates for debugging.
+- 🔒 Admin template editor at `/admin/templates` secured with Basic Auth; changes save to Shopify and take effect without redeploy.
 
 ## Prerequisites
 - Node.js 18+ and npm.
@@ -34,6 +35,14 @@ SHOPIFY_TOKEN=shpat_xxx
 TWILIO_ACCOUNT_SID=ACxxxx
 TWILIO_AUTH_TOKEN=xxxx
 TWILIO_FROM=+15551234567
+ADMIN_USER=admin
+ADMIN_PASS=change_me
+TEMPLATES_STORE=local
+TEMPLATES_FILE=/var/data/templates.json
+TEMPLATES_FILE_FALLBACK=src/messages/templates.json
+# Optional legacy Shopify metafield keys (unused when TEMPLATES_STORE=local)
+TEMPLATES_METAFIELD_NAMESPACE=marlas_sms
+TEMPLATES_METAFIELD_KEY=templates
 ```
 
 ## Local Development
@@ -52,16 +61,14 @@ Health probe: GET `http://localhost:4000/health`
    - Optional: `name`, `order_number` (or `order`), `tracking`.
 3. Response includes the rendered message (`preview`) and Twilio SID; logs stream to the terminal.
 
-## Message Templates
-Edit `src/messages/templates.json` to tweak copy or add new tags:
-
-```json
-{
-  "packed": "Your order {{order_number}} is ready!"
-}
-```
-
-New tags automatically become available once added to this file.
+## Message Templates (Editable UI)
+- Open `http://localhost:4000/admin/templates` (Basic Auth required via `ADMIN_USER`/`ADMIN_PASS`).
+- Edit/save/reset templates in the browser; they persist to a local JSON file (`TEMPLATES_FILE`, recommended on persistent disk). No redeploy needed.
+- API (also auth-protected):
+  - `GET /templates` → current templates
+  - `PUT /templates` → replace full template JSON `{ templates: { ... } }`
+  - `PUT /templates/:key` → update a single template `{ body: "..." }`
+Templates are cached in-memory for 60 seconds; the webhook/test endpoints always pull from the latest cached set (local file first, then fallback to `TEMPLATES_FILE_FALLBACK`).
 
 ## Shopify Flow Integration
 1. Create a Flow that triggers when an order tag is added.

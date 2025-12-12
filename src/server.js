@@ -1,6 +1,8 @@
 import express from 'express';
 import morgan from 'morgan';
 import config from './config.js';
+import adminTemplateRoutes from './routes/adminTemplates.js';
+import templateRoutes from './routes/templates.js';
 import testRoutes from './routes/test.js';
 import webhookRoutes from './routes/webhook.js';
 import logger from './utils/logger.js';
@@ -11,6 +13,7 @@ const app = express();
 app.use('/webhook', webhookRoutes);
 
 // JSON middleware for other routes
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(express.json({ limit: '1mb' }));
 
 app.use(
@@ -21,6 +24,8 @@ app.use(
   }),
 );
 
+app.use('/admin', adminTemplateRoutes);
+app.use('/templates', templateRoutes);
 app.use('/test', testRoutes);
 
 app.get('/health', (req, res) =>

@@ -149,7 +149,98 @@ export const persistSentTagLog = async (orderId, tags, metafieldId, retries = 3)
   }
 };
 
+export const getShopMetafield = async (namespace, key, retries = 3) => {
+  const client = getShopifyClient();
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const { data } = await client.get('/metafields.json', {
+        params: { namespace, key, owner_resource: 'shop' },
+      });
+
+      const metafieldMatch = data.metafields?.find(
+        (field) => field.namespace === namespace && field.key === key && field.owner_resource === 'shop',
+      );
+
+      if (!metafieldMatch) {
+        return null;
+      }
+
+      return metafieldMatch;
+    } catch (error) {
+      const isRateLimit = error.response?.status === 429;
+      const shouldRetry = attempt < retries && (isRateLimit || error.response?.status >= 500);
+
+      logger.warn(`Failed to fetch shop metafield (attempt ${attempt}/${retries})`, {
+        namespace,
+        key,
+        error: error.message,
+        status: error.response?.status,
+        willRetry: shouldRetry,
+      });
+
+      if (!shouldRetry) {
+        throw error;
+      }
+
+      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+};
+
+export const setShopMetafield = async (namespace, key, value, type = 'json', retries = 3) => {
+  const client = getShopifyClient();
+  const payload = {
+    metafield: {
+      namespace,
+      key,
+      type,
+      value,
+      owner_resource: 'shop',
+    },
+  };
+
+  const existing = await getShopMetafield(namespace, key, 1);
+  if (existing?.id) {
+    payload.metafield.id = existing.id;
+  }
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      if (payload.metafield.id) {
+        await client.put(`/metafields/${payload.metafield.id}.json`, payload);
+      } else {
+        await client.post('/metafields.json', payload);
+      }
+
+      logger.info('Shop metafield saved', { namespace, key });
+      return;
+    } catch (error) {
+      const isRateLimit = error.response?.status === 429;
+      const shouldRetry = attempt < retries && (isRateLimit || error.response?.status >= 500);
+
+      logger.warn(`Failed to persist shop metafield (attempt ${attempt}/${retries})`, {
+        namespace,
+        key,
+        error: error.message,
+        status: error.response?.status,
+        willRetry: shouldRetry,
+      });
+
+      if (!shouldRetry) {
+        throw error;
+      }
+
+      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+};
+
 export default {
   getSentTagLog,
   persistSentTagLog,
+  getShopMetafield,
+  setShopMetafield,
 };
