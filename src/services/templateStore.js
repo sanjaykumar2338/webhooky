@@ -15,6 +15,7 @@ const CACHE_TTL_MS = 60 * 1000;
 const MAX_TEMPLATE_LENGTH = 5000;
 
 let cache = { templates: null, fetchedAt: 0 };
+let localCache = { templates: null, fetchedAt: 0 };
 
 const requiredKeyVariants = {
   processing: ['processing'],
@@ -97,6 +98,12 @@ const cacheTemplates = (templates) => {
 };
 
 const isCacheFresh = () => cache.templates && Date.now() - cache.fetchedAt < CACHE_TTL_MS;
+
+const cacheLocalTemplates = (templates) => {
+  localCache = { templates, fetchedAt: Date.now() };
+};
+
+const isLocalCacheFresh = () => localCache.templates && Date.now() - localCache.fetchedAt < CACHE_TTL_MS;
 
 const loadTemplatesFromFile = async () => {
   try {
@@ -183,6 +190,25 @@ export const getTemplates = async () => {
   return withAliases;
 };
 
+export const getTemplatesLocalOnly = async () => {
+  if (isLocalCacheFresh()) {
+    return localCache.templates;
+  }
+
+  const fromFile = await loadTemplatesFromFile();
+  if (fromFile) {
+    const withAliases = applyKeyAliases(fromFile);
+    cacheLocalTemplates(withAliases);
+    return withAliases;
+  }
+
+  const defaults = await loadDefaultTemplates();
+  validateTemplates(defaults);
+  const withAliases = applyKeyAliases(defaults);
+  cacheLocalTemplates(withAliases);
+  return withAliases;
+};
+
 export const saveTemplates = async (templates) => {
   validateTemplates(templates);
   const normalized = applyKeyAliases(templates);
@@ -209,6 +235,7 @@ export const resetTemplatesToDefault = async () => {
 
 export default {
   getTemplates,
+  getTemplatesLocalOnly,
   saveTemplates,
   resetTemplatesToDefault,
   validateTemplates,

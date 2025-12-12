@@ -4,6 +4,7 @@ import config from './config.js';
 import adminTemplateRoutes from './routes/adminTemplates.js';
 import templateRoutes from './routes/templates.js';
 import testRoutes from './routes/test.js';
+import testWebhookOrderRoutes from './routes/testWebhookOrder.js';
 import webhookRoutes from './routes/webhook.js';
 import logger from './utils/logger.js';
 
@@ -26,6 +27,7 @@ app.use(
 
 app.use('/admin', adminTemplateRoutes);
 app.use('/templates', templateRoutes);
+app.use(testWebhookOrderRoutes);
 app.use('/test', testRoutes);
 
 app.get('/health', (req, res) =>
